@@ -1,0 +1,196 @@
+{
+  "ablations": {
+    "phase_adaptive_merge": {
+      "attention_flops_mean": 262144.0,
+      "attention_flops_min": 262144.0,
+      "attention_flops_std": 0.0,
+      "cache_bytes_mean": 131072.0,
+      "cache_bytes_min": 131072.0,
+      "cache_bytes_std": 0.0,
+      "keep_fraction": 0.25,
+      "mass_retained_mean": 0.253653102760577,
+      "mass_retained_min": 0.2534633806926675,
+      "mass_retained_std": 0.00017564822369378543,
+      "n_restores_mean": 104.0,
+      "n_seeds": 5,
+      "n_tokens": 512,
+      "needle_recall_group1_mean": 0.521875,
+      "needle_recall_group1_min": 0.46875,
+      "needle_recall_group1_std": 0.04764984588117783,
+      "needle_recall_group2_mean": 0.659375,
+      "needle_recall_group2_min": 0.546875,
+      "needle_recall_group2_std": 0.08934986534684873,
+      "needle_recall_mean": 0.590625,
+      "needle_recall_min": 0.515625,
+      "needle_recall_std": 0.04370812728343552,
+      "output_rel_error_mean": 0.608528360461065,
+      "output_rel_error_min": 0.5555162628321245,
+      "output_rel_error_std": 0.043185259835182496,
+      "policy": "phase_adaptive",
+      "worst_phase_recall_mean": 0.525,
+      "worst_phase_recall_min": 0.5,
+      "worst_phase_recall_std": 0.02614562582918986
+    },
+    "phase_adaptive_nomerge": {
+      "attention_flops_mean": 262144.0,
+      "attention_flops_min": 262144.0,
+      "attention_flops_std": 0.0,
+      "cache_bytes_mean": 131072.0,
+      "cache_bytes_min": 131072.0,
+      "cache_bytes_std": 0.0,
+      "keep_fraction": 0.25,
+      "mass_retained_mean": 0.253653102760577,
+      "mass_retained_min": 0.2534633806926675,
+      "mass_retained_std": 0.00017564822369378543,
+      "n_restores_mean": 104.0,
+      "n_seeds": 5,
+      "n_tokens": 512,
+      "needle_recall_group1_mean": 0.521875,
+      "needle_recall_group1_min": 0.46875,
+      "needle_recall_group1_std": 0.04764984588117783,
+      "needle_recall_group2_mean": 0.659375,
+      "needle_recall_group2_min": 0.546875,
+      "needle_recall_group2_std": 0.08934986534684873,
+      "needle_recall_mean": 0.590625,
+      "needle_recall_min": 0.515625,
+      "needle_recall_std": 0.04370812728343552,
+      "output_rel_error_mean": 1.7099832024619794,
+      "output_rel_error_min": 1.645671926505048,
+      "output_rel_error_std": 0.07013797246143758,
+      "policy": "phase_adaptive",
+      "worst_phase_recall_mean": 0.525,
+      "worst_phase_recall_min": 0.5,
+      "worst_phase_recall_std": 0.02614562582918986
+    }
+  },
+  "config": {
+    "ablations": {
+      "keep_fraction": 0.25,
+      "n_tokens": 512,
+      "seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "grid": {
+      "keep_fractions": [
+        0.5,
+        0.25,
+        0.125
+      ],
+      "n_tokens": [
+        512,
+        1024
+      ],
+      "seeds": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "stride": 4
+  },
+  "headline": {
+    "keep_fraction": 0.25,
+    "n_tokens": 512,
+    "policies": {
+      "chunked": {
+        "mass_retained": 0.257698796089576,
+        "needle_recall": 0.440625,
+        "output_rel_error": 1.6375189668981711,
+        "worst_phase_recall": 0.3375
+      },
+      "expected_attention": {
+        "mass_retained": 0.2524309100492067,
+        "needle_recall": 0.4453125,
+        "output_rel_error": 1.6707122467948232,
+        "worst_phase_recall": 0.38125
+      },
+      "knorm": {
+        "mass_retained": 0.24984611847779042,
+        "needle_recall": 0.1953125,
+        "output_rel_error": 1.7479934884051882,
+        "worst_phase_recall": 0.125
+      },
+      "phase_adaptive": {
+        "mass_retained": 0.253653102760577,
+        "needle_recall": 0.590625,
+        "output_rel_error": 1.7099832024619794,
+        "worst_phase_recall": 0.525
+      },
+      "phase_adaptive_norescue": {
+        "mass_retained": 0.2524195783598945,
+        "needle_recall": 0.4453125,
+        "output_rel_error": 1.6748153643036165,
+        "worst_phase_recall": 0.39375
+      },
+      "random": {
+        "mass_retained": 0.2500438338401911,
+        "needle_recall": 0.225,
+        "output_rel_error": 1.7280149124495499,
+        "worst_phase_recall": 0.1625
+      },
+      "snapkv": {
+        "mass_retained": 0.2524377631876671,
+        "needle_recall": 0.4453125,
+        "output_rel_error": 1.670578068077853,
+        "worst_phase_recall": 0.38125
+      },
+      "streaming": {
+        "mass_retained": 0.2503667273075794,
+        "needle_recall": 0.25,
+        "output_rel_error": 1.6644835010433758,
+        "worst_phase_recall": 0.0
+      },
+      "tova": {
+        "mass_retained": 0.2515182717623591,
+        "needle_recall": 0.434375,
+        "output_rel_error": 1.697804071403424,
+        "worst_phase_recall": 0.34375
+      }
+    }
+  },
+  "headline_group_recall": {
+    "chunked": {
+      "group1": 0.603125,
+      "group2": 0.278125
+    },
+    "expected_attention": {
+      "group1": 0.590625,
+      "group2": 0.3
+    },
+    "knorm": {
+      "group1": 0.178125,
+      "group2": 0.2125
+    },
+    "phase_adaptive": {
+      "group1": 0.521875,
+      "group2": 0.659375
+    },
+    "phase_adaptive_norescue": {
+      "group1": 0.590625,
+      "group2": 0.3
+    },
+    "random": {
+      "group1": 0.190625,
+      "group2": 0.259375
+    },
+    "snapkv": {
+      "group1": 0.590625,
+      "group2": 0.3
+    },
+    "streaming": {
+      "group1": 0.25,
+      "group2": 0.25
+    },
+    "tova": {
+      "group1": 0.6,
+      "group2": 0.26875
+    }
+  }
+}

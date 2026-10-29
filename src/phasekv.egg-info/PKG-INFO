@@ -1,0 +1,173 @@
+Metadata-Version: 2.4
+Name: phasekv
+Version: 0.1.0
+Summary: Phase-aware, query-adaptive KV-cache compression: an optimized successor design to kvpress-style presses, evaluated on a simulated attention testbed.
+License-Expression: Apache-2.0
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy
+Requires-Dist: pyyaml
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Dynamic: license-file
+
+# phasekv — phase-aware, query-adaptive KV-cache compression
+
+An optimized successor design to the presses in
+[NVIDIA/kvpress](https://github.com/NVIDIA/kvpress) (1,240 stars,
+191 forks, Apache-2.0, checked 2026-10-29), built and benchmarked
+without running kvpress itself: baseline presses are re-implemented
+from their published scoring rules and compared against the new
+policy on a shared simulated attention testbed, on identical
+contexts, budgets, and seeds. **All benchmark numbers below are
+simulation numbers from that testbed, not measurements of kvpress
+on real models.** See [docs/RESEARCH.md](docs/RESEARCH.md) for the
+trending check, sources, and rejected alternatives, and
+[docs/ADAPTING_TO_KVPRESS.md](docs/ADAPTING_TO_KVPRESS.md) for how
+the design maps onto real kvpress presses (untested on real models).
+
+## The weakness being optimized
+
+kvpress presses score KV pairs from the observation window and apply
+one keep fraction everywhere. Three things go wrong in the
+shared-context reuse setting — compression happens before the
+question is known, and the cache is reused for later questions:
+
+1. **Query blindness.** A press that scores from the first question's
+   context keeps facts the first question needed and drops facts a
+   later question needs. SnapKV-style scoring cannot recover them.
+2. **Phase weak spots.** Chunked compression adds a phase
+   coordinate (position relative to window boundaries). Zhu et al.
+   (arXiv:2609.36322) report retrieval accuracy differing by up to
+   40 percentage points across phases in real models; average
+   benchmarks conceal it.
+3. **Irreversible eviction.** Nothing verifies that the retained
+   set can still answer probe queries, or restores within budget
+   when it cannot.
+
+## What phasekv does differently
+
+The `PhaseAdaptivePolicy` makes three changes, each ablatable:
+
+1. **Per-head adaptive budgets.** Budget is allocated by measured
+   head behaviour (attention concentration in the observation
+   window), floored so no head is starved, instead of one uniform
+   keep fraction per head.
+2. **Phase-stratified retention.** Within each head, the budget is
+   split across compression phases (stride 4 by default), so no
+   phase class is starved.
+3. **Verified-recall rescue swaps.** A set of representative probe
+   queries (from a query log in deployment; a held-out query set
+   here, never the eval questions) measures retained attention
+   mass. If it is below threshold, the policy swaps in the
+   highest probe-scored evicted pairs for the lowest kept pairs —
+   at most 10% of budget per head — so the total never grows.
+   An optional **merge-downgrade** folds evicted values into their
+   nearest kept neighbour (averaged, preserving value scale)
+   instead of deleting them outright.
+
+Original work and attribution: the baseline scoring rules are the
+published rules behind kvpress presses (SnapKV, Knorm, Expected
+Attention, StreamingLLM, TOVA, chunked pooling, random). The
+phase-adaptive policy, the simulated testbed, and all code in this
+repo are original implementations written for this project. No
+kvpress code is included. License is Apache-2.0, matching kvpress.
+
+## Benchmark: original-style presses vs phasekv
+
+Workload: simulated 8-head attention, 512 tokens, 16 planted needle
+facts in two groups. Group A is what observation-window queries
+point at; group B is what later questions point at. Keep fraction
+0.25 (128 of 512 positions per head), 5 seeds. Metrics use eval
+queries only, which no policy sees. Full grid (512/1024 tokens ×
+keep 0.5/0.25/0.125 × 5 seeds) is in `results/experiment.json`;
+headline aggregates in `results/measured.json`.
+
+| Policy | Needle recall | Worst-phase recall | Mass retained | Output rel. error |
+| --- | --- | --- | --- | --- |
+| Random | 0.225 | 0.163 | 0.250 | 1.728 |
+| StreamingLLM | 0.250 | 0.000 | 0.250 | 1.664 |
+| SnapKV | 0.445 | 0.381 | 0.252 | 1.671 |
+| Knorm | 0.195 | 0.125 | 0.250 | 1.748 |
+| Expected attention | 0.445 | 0.381 | 0.252 | 1.671 |
+| Chunked (block top-1) | 0.441 | 0.338 | 0.258 | 1.638 |
+| TOVA | 0.434 | 0.344 | 0.252 | 1.698 |
+| **phasekv (this repo)** | **0.591** | **0.525** | 0.254 | 1.710 |
+| phasekv, no rescue (ablation) | 0.445 | 0.394 | 0.252 | 1.675 |
+
+At the same budget, phasekv recalls 0.591 vs 0.445 for SnapKV
+(+0.146) and lifts worst-phase recall from 0.381 to 0.525 (+0.144).
+The gain is attributable to rescue: the no-rescue ablation ties
+SnapKV (0.445), while group-B recall alone goes from 0.300
+(SnapKV) to 0.659 (phasekv) — at the cost of some group-A recall
+(0.591 → 0.522), the expected trade for a cache compressed before
+the question is known. The advantage holds at other budgets
+(keep 0.5: 0.720 vs 0.636; keep 0.125: 0.489 vs 0.333) and at 1024
+tokens (0.600 vs 0.452). Cache size is identical at matched keep
+fractions (131,072 bytes at the headline cell for every policy
+except chunked, 134,144, whose block-plus-sink rule keeps slightly
+more). With merge-downgrade enabled, output error at the headline
+cell falls from 1.710 to 0.609 with recall unchanged — merging
+preserves value information that eviction deletes.
+
+StreamingLLM's worst-phase recall of 0.000 is the phase weak spot
+made visible: a recency-only cache keeps nothing from early phases.
+
+## Quickstart
+
+```bash
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+pip install -e .
+
+# Compare all policies on one context
+PYTHONPATH=src python -m phasekv.cli demo
+
+# Score one policy on one context as JSON
+PYTHONPATH=src python -m phasekv.cli audit --policy phase_adaptive --keep 0.25
+
+# Benchmark table for one cell
+PYTHONPATH=src python scripts/benchmark.py
+
+# Full grid (writes results/experiment.json and results/measured.json)
+PYTHONPATH=src python scripts/run_experiment.py
+
+# Tests
+python -m pytest -q
+```
+
+Example policy config: `examples/policy.yaml`. Example context
+parameters: `examples/context.json`.
+
+## Limitations, stated honestly
+
+- **Simulated testbed, not real models.** Keys, values, and queries
+  are synthetic with planted structure. Relative policy behaviour
+  under controlled conditions is what is measured; nothing here
+  proves the same gains on a real transformer. GPU evaluation
+  against real kvpress presses is the required follow-up.
+- **Unit-norm keys.** Keys and queries are normalised so
+  discrimination is directional. This deliberately weakens the
+  Knorm rule (its signal is key norm); on real models Knorm's
+  behaviour will differ.
+- **Probe queries are a design input.** Rescue needs representative
+  probe queries. If the probe set does not resemble later
+  questions, rescue cannot help, and using eval questions as
+  probes would leak the test set — the code keeps probe and eval
+  query streams separate by construction.
+- **Merge-downgrade is value-only.** Evicted keys are dropped;
+  only value information is folded into neighbours. It improves
+  output fidelity in simulation but changes the cache semantics
+  and needs real-model validation.
+- **Chunked baseline is strong.** The chunked policy keeps the
+  best-scored token per block; pooled chunking (one entry per
+  block) would be weaker and more phase-sensitive, so the
+  chunked numbers here are a generous baseline.
+- **In-process, single testbed.** No serving, batching, or
+  multi-request lifecycle; SCBench-style lifecycle evaluation is
+  out of scope.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).

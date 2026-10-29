@@ -1,0 +1,6 @@
+policy: phase_adaptive
+stride: 4
+recall_threshold: 0.95
+floor_fraction: 0.25
+keep_fraction: 0.25
+merge_downgrade: false
